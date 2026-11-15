@@ -1,0 +1,464 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><title>Live Code Flow Visualizer</title>
+<style>
+:root{--bg:#f4f6f9;--pn:#fff;--tx:#1b1f24;--mu:#667085;--bd:#d6dbe3;--ac:#2f6fed;--hl:#fff1b8;--ok:#16844a;--no:#c43b3b;--nd:#eef2fb;--ch:#ffe08a;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme=light]){color-scheme:dark;--bg:#0f1318;--pn:#171c23;--tx:#e6e9ee;--mu:#8a94a3;--bd:#2b323c;--ac:#6b9bff;--hl:#3a3315;--ok:#4cc27f;--no:#ef7a7a;--nd:#1f2733;--ch:#6b5a12}}
+:root[data-theme=dark]{color-scheme:dark;--bg:#0f1318;--pn:#171c23;--tx:#e6e9ee;--mu:#8a94a3;--bd:#2b323c;--ac:#6b9bff;--hl:#3a3315;--ok:#4cc27f;--no:#ef7a7a;--nd:#1f2733;--ch:#6b5a12}
+html,body{height:100%;margin:0}body{background:var(--bg);color:var(--tx);font:14px system-ui,-apple-system,"Segoe UI",sans-serif;display:flex;flex-direction:column}
+header{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:8px 12px;background:var(--pn);border-bottom:1px solid var(--bd)}
+header b{margin-right:8px}button,select{background:var(--nd);color:var(--tx);border:1px solid var(--bd);border-radius:6px;padding:5px 10px;font:inherit;cursor:pointer}button:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--ac)}button.p{background:var(--ac);color:#fff;border-color:var(--ac)}button.s{color:var(--no)}button:disabled{opacity:.5;cursor:wait}
+main{flex:1;min-height:0;display:grid;grid-template-columns:1fr 1.25fr;grid-template-rows:1fr 200px;gap:8px;padding:8px}
+.pn{background:var(--pn);border:1px solid var(--bd);border-radius:8px;display:flex;flex-direction:column;min-height:0;min-width:0}
+.tabs{display:flex;gap:2px;overflow-x:auto;border-bottom:1px solid var(--bd);padding:4px 4px 0}.tabs button{border:0;border-radius:6px 6px 0 0;background:none;color:var(--mu);white-space:nowrap}.tabs button.on{background:var(--nd);color:var(--tx);font-weight:600}
+.body{flex:1;min-height:0;overflow:auto;padding:8px}#bot{grid-column:1/3}
+#edw{position:relative;flex:1;display:flex;min-height:0;font:13px/20px ui-monospace,Menlo,Consolas,monospace}
+#gt{width:36px;text-align:right;padding:8px 6px 8px 0;color:var(--mu);overflow:hidden;white-space:pre;border-right:1px solid var(--bd)}
+#hl{position:absolute;left:37px;right:0;height:20px;background:var(--hl);display:none;pointer-events:none}
+#ed{flex:1;border:0;outline:0;resize:none;background:transparent;color:var(--tx);font:inherit;padding:8px;tab-size:4;white-space:pre;position:relative}
+.ban{padding:6px 10px;font-size:12px;color:var(--mu);border-bottom:1px solid var(--bd)}.ban.w{color:var(--no)}
+.ctl{display:flex;gap:6px;align-items:center;flex-wrap:wrap;padding:6px 8px;border-bottom:1px solid var(--bd)}
+table{border-collapse:collapse;width:100%}td,th{border-bottom:1px solid var(--bd);padding:4px 8px;text-align:left}th{color:var(--mu);font-weight:500}
+.chg{background:var(--ch)}.row{padding:3px 6px;border-radius:4px;font-family:ui-monospace,monospace;font-size:12px}.row.cur{background:var(--hl)}.mu{color:var(--mu)}
+.nd rect,.nd polygon{fill:var(--nd);stroke:var(--mu);stroke-width:1.5}.nd text{fill:var(--tx);font:12px ui-monospace,monospace;text-anchor:middle;dominant-baseline:central}
+.nd.vis rect,.nd.vis polygon{stroke:var(--ok)}.nd.cur rect,.nd.cur polygon{fill:var(--hl);stroke:var(--ac);stroke-width:3}
+.nd.call rect{stroke:#a050e0}.nd.ret rect{stroke:#e08a2f}
+.nd.opaque rect{stroke-dasharray:4 3}.nd.imp rect{stroke:#2f9e76}
+.ed{fill:none;stroke:var(--mu);stroke-width:1.4}.ed.cl{stroke:#a050e0;stroke-dasharray:4 4}.ed.vis{stroke:var(--ok);stroke-width:2.2}.ed.cur{stroke:var(--ac);stroke-width:3;stroke-dasharray:7 5;animation:d .5s linear infinite}@keyframes d{to{stroke-dashoffset:-12}}
+@media(prefers-reduced-motion:reduce){.ed.cur{animation:none}}
+.el{fill:var(--mu);font:11px system-ui}.chip{display:inline-block;margin:2px;padding:3px 7px;border:1px solid var(--bd);border-radius:12px;font-size:12px}
+.fr{border:1px solid var(--bd);border-radius:6px;padding:6px 8px;margin-bottom:6px;background:var(--nd)}
+#in{width:100%;height:100%;box-sizing:border-box;background:var(--nd);color:var(--tx);border:1px solid var(--bd);font:13px ui-monospace,monospace}
+pre{margin:0;font:13px ui-monospace,monospace;white-space:pre-wrap}
+@media(max-width:800px){main{grid-template-columns:1fr;grid-template-rows:300px 480px 240px;overflow:auto}#bot{grid-column:1}}
+#ac{position:absolute;display:none;z-index:5;min-width:190px;background:var(--pn);border:1px solid var(--bd);border-radius:6px;box-shadow:0 4px 14px #0003;font:12px ui-monospace,monospace}
+#ac div{padding:4px 8px;display:flex;justify-content:space-between;gap:14px;cursor:pointer}#ac div.on{background:var(--ac);color:#fff}#ac span{opacity:.7}
+details{margin-top:6px}button,select{min-height:32px}@media(max-width:800px){button,select{min-height:40px}header b{width:100%}}
+</style></head><body>
+<header><b>Live Code Flow Visualizer</b>
+<select id="lang" aria-label="Language"><option value="py">Python</option><option value="c">C</option><option value="cpp">C++</option><option value="html">HTML</option><option value="css">CSS</option></select>
+<select id="sample" aria-label="Example"><option value="0">If / else</option><option value="1">For loop</option><option value="2">Functions</option><option value="3">Recursion + while</option><option value="4">Lists + f-strings</option><option value="5">HackerRank: Candles</option></select>
+<button class="p" id="run">Run</button><button class="s" id="stop">Stop</button><button id="fmt" title="Re-indent and tidy your code">Format</button>
+<button id="sin" title="Step into">Step Into</button><button id="sov" title="Step over">Step Over</button><button id="sou" title="Step out">Step Out</button>
+<button id="th">Theme</button><button id="dl">Download</button><button id="rs">Reset</button></header>
+<main>
+<section class="pn"><div class="ban" id="ban"></div>
+<div id="edw"><div id="gt"></div><div id="hl"></div><div id="ac" role="listbox"></div><textarea id="ed" spellcheck="false" aria-label="Code editor"></textarea></div></section>
+<section class="pn"><div class="tabs" id="rt"></div>
+<div class="ctl"><button id="rst">Restart</button><button id="prev">Prev</button><button id="play">Play</button><button id="next">Next</button>
+<label class="mu">Speed <input type="range" id="spd" min="1" max="10" value="5"></label><span class="mu" id="stat">not run</span></div>
+<div class="body" id="rb"></div></section>
+<section class="pn" id="bot"><div class="tabs" id="bt"></div><div class="body" id="bb"></div></section>
+</main>
+<script type="text/plain" id="eng">
+/* ===== Engine: runs on the main thread (parse only) and inside a Web Worker (parse + execute) ===== */
+class PyErr{constructor(t,m){this.msg=t+': '+m}}class Brk{}class Cnt{}class Ret{constructor(v){this.v=v}}class Opaque{constructor(t){this.t=t}}
+const KW=new Set(['and','or','not','in','is','if','else','True','False','None']);
+const unq=s=>s.replace(/\\(.)/g,(_,c)=>c==='n'?'\n':c==='t'?'\t':c);
+function tok(s,ln){const o=[],R=/\s*(?:(\d+\.?\d*(?:[eE][+-]?\d+)?|\.\d+)|(f?)("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')|([A-Za-z_]\w*)|(\*\*|\/\/|==|!=|<=|>=|[-+*\/%<>=()\[\],.:])|(\S))/y;let i=0,m;
+ while(/\S/.test(s.slice(i))){R.lastIndex=i;m=R.exec(s);if(!m||m[6])throw{line:ln,msg:'SyntaxError: '+(m&&/["']/.test(m[6])?'unterminated string literal':'invalid character '+(m?m[6]:s.slice(i).trim()[0]))};i=R.lastIndex;
+  if(m[1]!==undefined)o.push({t:'n',v:m[1]});else if(m[3])o.push({t:m[2]?'f':'s',v:m[3].slice(1,-1)});else if(m[4])o.push({t:KW.has(m[4])?'op':'id',v:m[4]});else o.push({t:'op',v:m[5]})}
+ return o}
+const fparts=(s,ln)=>{const o=[];s.split(/(\{[^}]*\})/).forEach(x=>{if(x[0]==='{'&&x.length>1){const m=x.slice(1,-1).match(/^(.*?)(?::(.*))?$/);o.push([pa(m[1],ln),m[2]])}else if(x)o.push(unq(x))});return o};
+/* Pratt-style recursive-descent expression parser -> array AST. list=true parses a comma list */
+function pa(src,ln,list){const T=tok(src,ln);let p=0;const bad=m=>{throw{line:ln,msg:'SyntaxError: '+m}},is=v=>T[p]&&T[p].t==='op'&&T[p].v===v,nx=()=>T[p++],
+ need=v=>{if(!is(v))bad(T[p]?"expected '"+v+"' but found '"+T[p].v+"'":"expected '"+v+"' (line ends too early)");p++};
+ const ex=()=>{const a=or();if(is('if')){p++;const c=or();need('else');return['tern',c,a,ex()]}return a},
+ or=()=>{let l=and();while(is('or')){p++;l=['or',l,and()]}return l},and=()=>{let l=not();while(is('and')){p++;l=['and',l,not()]}return l},
+ not=()=>is('not')?(p++,['not',not()]):cmp(),
+ cmp=()=>{const l=add(),ops=[],rs=[];for(;;){let o;if(['==','!=','<','>','<=','>='].some(is))o=nx().v;else if(is('not')&&T[p+1]&&T[p+1].v==='in'){p+=2;o='not in'}else if(is('in')){p++;o='in'}else if(is('is')){p++;o=is('not')?(p++,'is not'):'is'}else break;ops.push(o);rs.push(add())}return ops.length?['cmp',l,ops,rs]:l},
+ add=()=>{let l=mul();while(is('+')||is('-'))l=['bin',nx().v,l,mul()];return l},
+ mul=()=>{let l=un();while(is('*')||is('/')||is('//')||is('%'))l=['bin',nx().v,l,un()];return l},
+ un=()=>is('-')||is('+')?['un',nx().v,un()]:pw(),pw=()=>{const b=post();return is('**')?(p++,['bin','**',b,un()]):b},
+ post=()=>{let e=atom();for(;;){if(is('(')){p++;const a=[];while(!is(')')){a.push(ex());if(!is(','))break;p++}need(')');e=['call',e,a]}else if(is('[')){p++;const i=ex();need(']');e=['idx',e,i]}else if(is('.')){p++;e=['attr',e,(nx()||{}).v]}else break}return e},
+ atom=()=>{const t=nx();if(!t)bad('unexpected end of line');if(t.t==='n')return['lit',+t.v];if(t.t==='s')return['lit',unq(t.v)];if(t.t==='f')return['fs',fparts(t.v,ln)];if(t.t==='id')return['var',t.v];
+  if(t.v==='True')return['lit',true];if(t.v==='False')return['lit',false];if(t.v==='None')return['lit',null];
+  if(t.v==='('){const e=ex();need(')');return e}if(t.v==='['){const a=[];while(!is(']')){a.push(ex());if(!is(','))break;p++}need(']');return['list',a]}bad("unexpected '"+t.v+"'")};
+ let r;if(list){r=[];while(p<T.length){r.push(ex());if(!is(','))break;p++}}else r=ex();
+ if(p<T.length)bad(is('=')?"invalid syntax. Maybe you meant '==' instead of '='?":"unexpected '"+T[p].v+"'");return r}
+/* line preparation */
+const cs=l=>{let q=null,o='';for(let i=0;i<l.length;i++){const c=l[i];if(q){if(c==='\\'){o+=c+(l[++i]||'');continue}if(c===q)q=null}else if(c==='"'||c==="'")q=c;else if(c==='#')break;o+=c}return o};
+const tc=t=>{let q=null,d=0;for(let i=0;i<t.length;i++){const c=t[i];if(q){if(c==='\\')i++;else if(c===q)q=null}else if(c==='"'||c==="'")q=c;else if('([{'.includes(c))d++;else if(')]}'.includes(c))d--;else if(c===':'&&!d)return i}return -1};
+function parse(src){const L=[];let uid=1,p=0;
+ src.split('\n').forEach((raw,i)=>{raw=raw.replace(/^\t+/,m=>'    '.repeat(m.length));const t=cs(raw).trim();if(!t)return;const ind=raw.match(/^ */)[0].length;
+  const k=/^(if|elif|while|for|else|def)\b/.test(t)?tc(t):-1;if(k>0&&t.slice(k+1).trim()){L.push({n:i+1,ind,t:t.slice(0,k+1)});L.push({n:i+1,ind:ind+1,t:t.slice(k+1).trim()})}else L.push({n:i+1,ind,t})});
+ const bad=(l,m)=>{throw{line:l.n,msg:m}};
+ function block(ind){const o=[];while(p<L.length&&L[p].ind>=ind){if(L[p].ind>ind)bad(L[p],'IndentationError: unexpected indent');o.push(stmt(L[p],ind))}return o}
+ function body(ind,l){const nx=L[p];if(!nx||nx.ind<=ind)bad(l,'IndentationError: expected an indented block');return block(nx.ind)}
+ function tail(ind){const nx=L[p];if(!nx||nx.ind!==ind)return[];let m;
+  if(m=nx.t.match(/^elif (.+):$/)){p++;const s={k:'if',id:'n'+uid++,line:nx.n,t:nx.t,lab:'elif',ct:m[1],c:pa(m[1],nx.n)};s.b=body(ind,nx);s.e=tail(ind);return[s]}
+  if(nx.t==='else:'){p++;return body(ind,nx)}return[]}
+ function stmt(l,ind){p++;const t=l.t,s={id:'n'+uid++,line:l.n,t};let m;
+  if(/^(if|elif|while|for|def|else)\b/.test(t)&&!/:$/.test(t))bad(l,"SyntaxError: expected ':' at the end of this line");
+  if(/^(elif|else)\b/.test(t))bad(l,'SyntaxError: "'+t.split(/\W/)[0]+'" without a matching if');
+  const opaqueBlock=()=>{s.k='opaque';s.b=body(ind,l);s.e=tail(ind)};
+  try{
+   if(m=t.match(/^if (.+):$/)){s.k='if';s.ct=m[1];s.c=pa(m[1],l.n);s.b=body(ind,l);s.e=tail(ind)}
+   else if(m=t.match(/^while (.+):$/)){s.k='while';s.ct=m[1];s.c=pa(m[1],l.n);s.b=body(ind,l)}
+   else if(m=t.match(/^for (\w+) in (.+):$/)){s.k='for';s.v=m[1];s.its=m[2];s.it=pa(m[2],l.n);s.b=body(ind,l)}
+   else if(m=t.match(/^def (\w+)\s*\((.*)\)\s*:$/)){s.k='def';s.name=m[1];s.ps=m[2].split(',').map(x=>x.trim()).filter(Boolean);s.b=body(ind,l)}
+   else if(m=t.match(/^return(?:\s+(.+))?$/)){s.k='return';s.vt=m[1]||'';s.v=m[1]?pa(m[1],l.n):null}
+   else if(/^(break|continue|pass)$/.test(t))s.k=t;
+   else if(m=t.match(/^print\((.*)\)$/)){s.k='print';s.at=m[1];s.a=pa(m[1],l.n,1)}
+   else if(m=t.match(/^(\w+)\s*(\+|-|\*|\/\/|\/|%)=\s*(.+)$/)){s.k='aug';s.tg=m[1];s.op=m[2];s.v=pa(m[3],l.n)}
+   else if(m=t.match(/^(\w+)(?:\[(.+?)\])?\s*=(?!=)\s*(.+)$/)){s.k='assign';s.tg=m[1];s.ix=m[2]?pa(m[2],l.n):null;s.v=pa(m[3],l.n)}
+   else if(/^[\w.]+\(.*\)$/.test(t)){s.k='expr';s.x=pa(t,l.n)}
+   else if(m=t.match(/^import\s+(.+)$/)){s.k='import';s.mods=m[1]}
+   else if(m=t.match(/^from\s+(\S+)\s+import\s+(.+)$/)){s.k='import';s.mods=m[1]+' import '+m[2]}
+   else if(/:$/.test(t))opaqueBlock();
+   else{s.k='opaque'}
+  }catch(e){
+   s.k='opaque';s.oerr=(e&&e.msg)||String(e);
+   if(/:$/.test(t)){try{s.b=body(ind,l);s.e=tail(ind)}catch(e2){s.b=[];s.e=[]}}
+  }
+  return s}
+ const r=block(L.length?L[0].ind:0);if(p<L.length)bad(L[p],'IndentationError: unindent does not match any outer indentation level');return r}
+function walk(ss,f,d=0){ss.forEach(s=>{f(s,d);if(s.b)walk(s.b,f,d+1);if(s.e)walk(s.e,f,d+1)})}
+function analyze(ss){const fn=[];walk(ss,s=>{if(s.k==='def')fn.push(s)});const names=fn.map(f=>f.name);
+ fn.forEach(f=>{const c=new Set();walk(f.b,s=>names.forEach(n=>{if(new RegExp('\\b'+n+'\\s*\\(').test(s.t))c.add(n)}));f.calls=[...c];f.rec=c.has(f.name)});return{fn,names}}
+/* ---- runtime ---- */
+const rp=v=>v===true?'True':v===false?'False':v==null?'None':typeof v==='string'?"'"+v+"'":v&&v.__mod?'<module '+rp(v.__mod)+'>':v&&v.__file?'<file '+rp(v.path)+'>':v&&v.__env?'environ({...})':Array.isArray(v)?'['+v.map(rp).join(', ')+']':String(v);
+const ps=v=>typeof v==='string'?v:rp(v),ty=v=>v===true||v===false?'bool':v==null?'NoneType':typeof v==='string'?'str':Array.isArray(v)?'list':v&&v.__mod?'module':v&&v.__file?'TextIOWrapper':v&&v.__env?'_Environ':typeof v==='object'||typeof v==='function'?'function':Number.isInteger(v)?'int':'float';
+const tr=v=>Array.isArray(v)||typeof v==='string'?v.length>0:!!v;
+const eq=(a,b)=>Array.isArray(a)&&Array.isArray(b)?a.length===b.length&&a.every((x,i)=>eq(x,b[i])):a===b;
+function execute(prog,stdin){
+ const steps=[],G=Object.create(null),F=Object.create(null),stack=[{name:'<module>',vars:G,args:''}],lines=stdin?stdin.split('\n'):[],MAX=3000;let ip=0,out='',n=0,cur=0;
+ G.__name__='__main__';
+ const err=(t,m)=>{throw new PyErr(t,m)},num=v=>typeof v==='number'||typeof v==='boolean',seq=v=>typeof v==='string'||Array.isArray(v);
+ const B={len:v=>seq(v)?v.length:err('TypeError',`object of type '${ty(v)}' has no len()`),str:ps,bool:tr,abs:v=>num(v)?Math.abs(v):err('TypeError','bad operand type for abs()'),
+  int:v=>{if(typeof v==='string'){if(!/^\s*[-+]?\d+\s*$/.test(v))err('ValueError','invalid literal for int() with base 10: '+rp(v));return parseInt(v,10)}return Math.trunc(Number(v))},
+  float:v=>{const x=Number(v);if(isNaN(x)||typeof v==='string'&&!v.trim())err('ValueError','could not convert string to float: '+rp(v));return x},
+  max:(...a)=>{const x=a.length===1?a[0]:a;if(!x.length)err('ValueError','max() arg is an empty sequence');return x.reduce((p,q)=>q>p?q:p)},
+  min:(...a)=>{const x=a.length===1?a[0]:a;if(!x.length)err('ValueError','min() arg is an empty sequence');return x.reduce((p,q)=>q<p?q:p)},
+  sum:a=>a.reduce((x,y)=>x+y,0),round:Math.round,open:(p,m)=>({__file:1,path:p,buf:''}),
+  list:a=>Array.isArray(a)?a.slice():typeof a==='string'?a.split(''):err('TypeError',`'${ty(a)}' object is not iterable`),
+  map:(f,a)=>a.map(x=>typeof f==='function'?f(x):call(f,[x])),
+  enumerate:(a,start)=>a.map((x,i)=>[i+(start||0),x]),
+  range:(a,b,c=1)=>{if(b===undefined){b=a;a=0}if(!c)err('ValueError','range() arg 3 must not be zero');const r=[];for(let i=a;c>0?i<b:i>b;i+=c){r.push(i);if(r.length>1e5)err('MemoryError','range too large for this visualizer')}return r},
+  input:p=>{if(p!==undefined)out+=ps(p);if(ip>=lines.length)err('EOFError','EOF when reading a line (add values in the Input tab)');return lines[ip++]}};
+ const lk=(k,fr)=>k in fr.vars?fr.vars[k]:k in G?G[k]:k in F?F[k]:k in B?B[k]:err('NameError',`name '${k}' is not defined`);
+ const ix=(o,i)=>{if(!seq(o))err('TypeError',`'${ty(o)}' object is not subscriptable`);if(!Number.isInteger(i))err('TypeError','indices must be integers');const j=i<0?o.length+i:i;if(j<0||j>=o.length)err('IndexError',(typeof o==='string'?'string':'list')+' index out of range');return j};
+ const op=(o,x,y)=>{if(o==='+'){if(num(x)&&num(y)||typeof x==='string'&&typeof y==='string')return x+y;if(Array.isArray(x)&&Array.isArray(y))return x.concat(y)}
+  else if(o==='*'){if(num(x)&&num(y))return x*y;const[s,k]=typeof y==='number'?[x,y]:[y,x];if(seq(s)&&typeof k==='number')return typeof s==='string'?s.repeat(Math.max(0,k)):Array.from({length:Math.max(0,k)}).flatMap(()=>s.slice())}
+  else if(num(x)&&num(y)){const z=()=>{if(!y)err('ZeroDivisionError',o==='/'?'division by zero':'integer division or modulo by zero')};
+   if(o==='-')return x-y;if(o==='/'){z();return x/y}if(o==='//'){z();return Math.floor(x/y)}if(o==='%'){z();return((x%y)+y)%y}if(o==='**')return x**y}
+  err('TypeError',`unsupported operand type(s) for ${o}: '${ty(x)}' and '${ty(y)}'`)};
+ const rel=(o,x,y)=>{if(o==='==')return eq(x,y);if(o==='!=')return!eq(x,y);if(o==='is')return x===y;if(o==='is not')return x!==y;
+  if(o==='in'||o==='not in'){let r;if(Array.isArray(y))r=y.some(v=>eq(v,x));else if(typeof y==='string'&&typeof x==='string')r=y.includes(x);else err('TypeError',`argument of type '${ty(y)}' is not iterable`);return o==='in'?r:!r}
+  if(num(x)&&num(y)||typeof x==='string'&&typeof y==='string')return o==='<'?x<y:o==='>'?x>y:o==='<='?x<=y:x>=y;
+  err('TypeError',`'${o}' not supported between instances of '${ty(x)}' and '${ty(y)}'`)};
+ function ev(a,fr){switch(a[0]){
+  case'lit':return a[1];case'var':return lk(a[1],fr);case'list':return a[1].map(x=>ev(x,fr));
+  case'un':{const v=ev(a[2],fr);if(!num(v))err('TypeError',`bad operand type for unary ${a[1]}: '${ty(v)}'`);return a[1]==='-'?-v:+v}
+  case'not':return!tr(ev(a[1],fr));case'and':{const l=ev(a[1],fr);return tr(l)?ev(a[2],fr):l}case'or':{const l=ev(a[1],fr);return tr(l)?l:ev(a[2],fr)}
+  case'tern':return tr(ev(a[1],fr))?ev(a[2],fr):ev(a[3],fr);
+  case'bin':return op(a[1],ev(a[2],fr),ev(a[3],fr));
+  case'cmp':{let l=ev(a[1],fr);for(let i=0;i<a[2].length;i++){const r=ev(a[3][i],fr);if(!rel(a[2][i],l,r))return false;l=r}return true}
+  case'idx':{const o=ev(a[1],fr);if(o&&o.__env){ev(a[2],fr);return'/tmp/output.txt'}return o[ix(o,ev(a[2],fr))]}
+  case'fs':return a[1].map(x=>{if(typeof x==='string')return x;const v=ev(x[0],fr),m=x[1]&&x[1].match(/^\.(\d+)f$/);return m&&num(v)?Number(v).toFixed(+m[1]):ps(v)}).join('');
+  case'attr':{const o=ev(a[1],fr);if(o&&o.__mod){if(o.__mod==='os'&&a[2]==='environ')return{__env:1};if(o.__mod==='sys'&&a[2]==='argv')return[];if(o.__mod==='math'&&a[2]==='pi')return Math.PI;return{__mod:o.__mod+'.'+a[2]}}err('AttributeError',`'${ty(o)}' attribute access is only supported in method calls`)}
+  case'call':{const args=a[2].map(x=>ev(x,fr)),f=a[1];
+   if(f[0]==='attr'){const o=ev(f[1],fr),m=f[2];
+    if(o&&o.__file){if(m==='write'){o.buf+=ps(args[0]);return ps(args[0]).length}if(m==='close'||m==='flush')return null;err('AttributeError','file method '+m+' is not modeled')}
+    if(o&&o.__mod){if(o.__mod==='math'&&typeof Math[m]==='function')return Math[m](...args);err('NotImplementedError','module function '+o.__mod+'.'+m+'() is not modeled')}
+    if(Array.isArray(o)&&m==='append'){o.push(args[0]);return null}if(Array.isArray(o)&&m==='pop'){if(!o.length)err('IndexError','pop from empty list');return o.pop()}
+    if(Array.isArray(o)&&m==='count')return o.filter(x=>eq(x,args[0])).length;
+    if(Array.isArray(o)&&m==='index'){const i=o.findIndex(x=>eq(x,args[0]));if(i<0)err('ValueError',rp(args[0])+' is not in list');return i}
+    if(Array.isArray(o)&&m==='sort'){o.sort((x,y)=>x<y?-1:x>y?1:0);return null}
+    if(typeof o==='string'&&['upper','lower','strip','lstrip','rstrip'].includes(m))return m==='upper'?o.toUpperCase():m==='lower'?o.toLowerCase():m==='lstrip'?o.replace(/^\s+/,''):m==='rstrip'?o.replace(/\s+$/,''):o.trim();
+    if(typeof o==='string'&&m==='split')return(args.length?o.split(args[0]):o.trim().split(/\s+/)).filter(x=>args.length?true:x!=='');
+    if(typeof o==='string'&&m==='join')return args[0].map(ps).join(o);
+    err('AttributeError',`'${ty(o)}' object has no attribute '${m}'`)}
+   const fn=ev(f,fr);return typeof fn==='function'?fn(...args):fn&&fn.k==='def'?call(fn,args):err('TypeError',`'${ty(fn)}' object is not callable`)}}
+  err('RuntimeError','unknown expression')}
+ const snap=()=>stack.map(f=>({name:f.name,args:f.args,vars:Object.entries(f.vars).map(([k,v])=>[k,ty(v),rp(v)])}));
+ const step=(s,note,kind,cond)=>steps.push({id:s.id,line:s.line,note,kind:kind||'',cond,out,depth:stack.length,stack:snap()});
+ const exe=(ss,fr)=>{for(const s of ss)one(s,fr)};
+ function call(d,a){if(a.length!==d.ps.length)err('TypeError',`${d.name}() takes ${d.ps.length} argument(s) but ${a.length} were given`);if(stack.length>40)err('RecursionError','maximum recursion depth (40) exceeded in this visualizer');
+  const fr={name:d.name,vars:Object.create(null),args:a.map(rp).join(', ')};d.ps.forEach((p,i)=>fr.vars[p]=a[i]);stack.push(fr);step(d,`Call ${d.name}(${fr.args})`,'call');let rv=null;
+  try{exe(d.b,fr)}catch(e){if(e instanceof Ret)rv=e.v;else throw e}
+  steps.push({id:'e_'+d.id,line:d.line,note:`${d.name} returns ${rp(rv)}`,kind:'ret',out,depth:stack.length,stack:snap()});stack.pop();return rv}
+ function one(s,fr){cur=s.line;if(++n>MAX)err('RuntimeError',`step limit (${MAX}) reached - possible infinite loop`);
+  switch(s.k){
+  case'def':F[s.name]=s;return;
+  case'import':{const ms=s.mods.indexOf(' import ')<0?s.mods.split(','):[];ms.forEach(x=>{const mm=x.trim().match(/^([\w.]+)(?:\s+as\s+(\w+))?$/);if(mm)fr.vars[mm[2]||mm[1].split('.')[0]]={__mod:mm[1].split('.')[0]}});step(s,'import '+s.mods,'import');return}
+  case'opaque':step(s,'Visualization not available for this construct - real Python output is still shown below.','opaque');throw new Opaque(s.t);
+  case'assign':{const v=ev(s.v,fr);if(s.ix){const t=lk(s.tg,fr),i=ev(s.ix,fr);if(!Array.isArray(t))err('TypeError',`'${ty(t)}' object does not support item assignment`);t[ix(t,i)]=v;step(s,`${s.tg}[${rp(i)}] = ${rp(v)}`)}else{fr.vars[s.tg]=v;step(s,`${s.tg} = ${rp(v)}`)}return}
+  case'aug':{const v=op(s.op,lk(s.tg,fr),ev(s.v,fr));fr.vars[s.tg]=v;step(s,`${s.tg} ${s.op}= ... -> ${rp(v)}`);return}
+  case'print':{const t=ev(['list',s.a],fr).map(ps).join(' ');out+=t+'\n';step(s,'Output: '+t,'io');return}
+  case'expr':ev(s.x,fr);step(s,'Evaluate '+s.t);return;
+  case'pass':step(s,'pass');return;
+  case'break':step(s,'break');throw new Brk;
+  case'continue':step(s,'continue');throw new Cnt;
+  case'return':{const v=s.v?ev(s.v,fr):null;step(s,'return '+rp(v));throw new Ret(v)}
+  case'if':{const c=tr(ev(s.c,fr));step(s,`${s.ct} -> ${c?'TRUE':'FALSE'}`,'cond',c);exe(c?s.b:s.e,fr);return}
+  case'while':{let k=0;for(;;){cur=s.line;const c=tr(ev(s.c,fr));k++;step(s,`Iteration ${k}: ${s.ct} -> ${c?'TRUE':'FALSE'}`,'cond',c);if(!c)break;
+    try{exe(s.b,fr)}catch(e){if(e instanceof Brk)break;if(!(e instanceof Cnt))throw e}}return}
+  case'for':{const it=ev(s.it,fr);if(!seq(it))err('TypeError',`'${ty(it)}' object is not iterable`);let k=0;for(const x of Array.from(it)){cur=s.line;k++;fr.vars[s.v]=x;step(s,`Iteration ${k}/${it.length}: ${s.v} = ${rp(x)}`,'cond',true);
+    try{exe(s.b,fr)}catch(e){if(e instanceof Brk)return;if(!(e instanceof Cnt))throw e}}step(s,'Loop finished','cond',false);return}}}
+ let er=null;steps.push({id:'s_main',line:0,note:'Program starts',out:'',depth:1,stack:snap()});
+ try{exe(prog,stack[0]);steps.push({id:'e_main',line:0,note:'Program ends',out,depth:1,stack:snap()})}
+ catch(e){
+  if(!(e instanceof Ret||e instanceof Brk||e instanceof Cnt)){return{steps,err:null,vizLimited:true}}
+  const last=steps[steps.length-1];er={line:cur,msg:e instanceof Ret?"SyntaxError: 'return' outside function":e instanceof Brk||e instanceof Cnt?"SyntaxError: 'break'/'continue' outside loop":e instanceof PyErr?e.msg:'InternalError: '+(e&&e.message||e)};
+  steps.push({id:last.id,line:cur,note:'Error: '+er.msg,kind:'err',out,depth:last.depth,stack:last.stack})
+ }
+ return{steps,err:er}}
+</script>
+<script>
+const $=id=>document.getElementById(id),esc=s=>String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+const ENG=$('eng').textContent,EN=new Function(ENG+';return{parse,analyze,walk}')();
+const WURL=URL.createObjectURL(new Blob([ENG+';onmessage=e=>{let r;try{r=execute(parse(e.data.src),e.data.stdin)}catch(x){r={steps:[],err:{line:x.line||0,msg:x.msg||String(x)}}}postMessage(r)}'],{type:'text/javascript'}));
+const SAMPLES=[`a = 10\nb = 20\n\nif a > b:\n    print("A is greater")\nelse:\n    print("B is greater")`,`for i in range(1, 6):\n    print(i)`,`def add(a, b):\n    return a + b\n\ndef main():\n    result = add(10, 20)\n    print(result)\n\nmain()`,`def fact(n):\n    if n <= 1:\n        return 1\n    return n * fact(n - 1)\n\ntotal = 0\nk = 0\nwhile k < 3:\n    k += 1\n    if k == 2:\n        continue\n    total += k\nprint(fact(4), total)`,`nums = [4, 8, 15]\nnums.append(-3)\nprint(nums[-1], 7 // 2, -7 // 2, -7 % 3, 2 ** 5)\nfor n in nums:\n    if 0 < n < 10: print(f"{n} is small")`,`import math\nimport os\nimport random\nimport re\nimport sys\n\ndef birthdayCakeCandles(candles):\n    return candles.count(max(candles))\n\nif __name__ == '__main__':\n    fptr = open(os.environ['OUTPUT_PATH'], 'w')\n\n    candles_count = int(input().strip())\n\n    candles = list(map(int, input().rstrip().split()))\n\n    result = birthdayCakeCandles(candles)\n\n    fptr.write(str(result) + '\\n')\n\n    fptr.close()`];
+const SIN=['','','','','','4\n3 2 1 3'];
+const CS=`#include <stdio.h>\nint main(){\n  int a = 10, b = 20;\n  if (a > b) printf("A");\n  else printf("B");\n  return 0;\n}`;
+const RT=[['f','Flowchart'],['x','Execution Flow'],['v','Variables'],['c','Call Stack'],['p','Preview']],BT=[['i','Input'],['o','Output'],['e','Errors'],['l','Logs'],['h','Help']];
+let rtab='f',btab='o',P=null,perr=null,chart=null,wk=null,pend=null,st={steps:[],i:-1,timer:null,err:null,stdin:'',real:{out:'',fileOut:'',error:null},vizLimited:false};
+/* ---------- flowchart ---------- */
+const W=ss=>Math.max(0,...ss.filter(s=>s.k!=='def').map(sw)),sw=s=>s.k==='if'?Math.max(W(s.b),170)+Math.max(W(s.e),170)+20:(s.k==='while'||s.k==='for')?Math.max(W(s.b),170)+60:170;
+const cut=(s,n=24)=>s.length>n?s.slice(0,n-1)+'…':s;
+function buildChart(prog,an){let N=[],E=[],rets=[],uid=0;const add=(id,type,label,x,y)=>N.push({id,type,label,x,y}),link=(pend,id)=>pend.forEach(([a,l])=>E.push({a,b:id,l})),
+ callee=s=>an.names.find(n=>new RegExp('\\b'+n+'\\s*\\(').test(s.t)),fid={};an.fn.forEach(f=>fid[f.name]=f.id);
+ function build(ss,cx,y,pend,ctx){for(const s of ss){if(s.k==='def')continue;const w=sw(s);
+  if(s.k==='if'){add(s.id,'dec',(s.lab||'if')+' '+cut(s.ct,18)+'?',cx,y);link(pend,s.id);const Wb=Math.max(W(s.b),170),We=Math.max(W(s.e),170),left=cx-w/2;
+   const r1=build(s.b,left+Wb/2,y+95,[[s.id,'True']],ctx),r2=s.e.length?build(s.e,left+Wb+20+We/2,y+95,[[s.id,'False']],ctx):{y:y+95,pend:[[s.id,'False']]};y=Math.max(r1.y,r2.y);pend=[...r1.pend,...r2.pend]}
+  else if(s.k==='while'||s.k==='for'){const Wb=Math.max(W(s.b),170),left=cx-w/2,bx=left+Wb/2;add(s.id,'dec',s.k==='for'?cut('for '+s.v+' in '+s.its,22):'while '+cut(s.ct,16)+'?',bx,y);link(pend,s.id);
+   const c2={head:s.id,br:[]},r=build(s.b,bx,y+95,[[s.id,s.k==='for'?'Next item':'True']],c2);r.pend.forEach(([a])=>E.push({a,b:s.id,back:left+Wb+30}));pend=[[s.id,s.k==='for'?'Done':'False'],...c2.br.map(a=>[a,'break'])];y=r.y}
+  else{const c=callee(s),ty=s.k==='opaque'?'opaque':s.k==='import'?'imp':s.k==='print'||/input\(/.test(s.t)?'io':s.k==='return'?'ret':c?'call':'proc',lb=s.k==='import'?'import '+cut(s.mods,18):s.k==='print'?'Print '+cut(s.at,18):s.k==='return'?'return '+cut(s.vt,18):cut(s.t,24);
+   add(s.id,ty,lb,cx,y);link(pend,s.id);if(c)E.push({a:s.id,b:fid[c],call:1});y+=70;pend=[[s.id,'']];
+   if(s.k==='return'){rets.push(s.id);pend=[]}if(s.k==='break'){ctx.br&&ctx.br.push(s.id);pend=[]}if(s.k==='continue'){if(ctx.head)E.push({a:s.id,b:ctx.head,back:cx+100});pend=[]}}}
+  return{y,pend}}
+ let off=0;const mk=(ss,h)=>{const w=Math.max(W(ss),170),cx=off+w/2+40;rets=[];add(h.s,'term',h.l,cx,40);const r=build(ss,cx,115,[[h.s,'']],{});add(h.e,'term',h.t,cx,r.y);link(r.pend,h.e);rets.forEach(a=>E.push({a,b:h.e}));off+=w+130};
+ mk(prog.filter(s=>s.k!=='def'),{s:'s_main',e:'e_main',l:'START',t:'END'});an.fn.forEach(f=>mk(f.b,{s:f.id,e:'e_'+f.id,l:'def '+f.name+'('+f.ps.join(', ')+')',t:'return'}));return{N,E}}
+function drawChart(){if(!chart)return'';const M={};chart.N.forEach(n=>{n.w=n.type==='dec'?190:170;n.h=n.type==='dec'?70:44;M[n.id]=n});let mx=0,my=0,o='';
+ chart.E.forEach(e=>{const a=M[e.a],b=M[e.b];if(!a||!b)return;let d,lx,ly;const ax=a.x,ay=a.y+a.h/2;
+  if(e.call){const x1=a.x+a.w/2,x2=b.x-b.w/2;d=`M${x1},${a.y}C${x1+70},${a.y} ${x2-70},${b.y} ${x2},${b.y}`}
+  else if(e.back){const rx=e.back,by=ay+22;d=`M${ax},${ay}L${ax},${by}L${rx},${by}L${rx},${b.y}L${b.x+b.w/2},${b.y}`;lx=rx+4;ly=b.y-4}
+  else{d=`M${ax},${ay}C${ax},${ay+35} ${b.x},${b.y-b.h/2-35} ${b.x},${b.y-b.h/2}`;lx=ax+(b.x<ax?-34:6);ly=ay+14}
+  o+=`<path class="ed${e.call?' cl':''}" data-e="${e.a}>${e.b}" d="${d}" marker-end="url(#ar)"/>`;if(e.l)o+=`<text class="el" x="${lx}" y="${ly}">${e.l}</text>`});
+ chart.N.forEach(n=>{const x=n.x,y=n.y,hw=n.w/2,hh=n.h/2;mx=Math.max(mx,x+hw+90);my=Math.max(my,y+hh+40);let sh;
+  if(n.type==='dec')sh=`<polygon points="${x-hw},${y} ${x},${y-hh} ${x+hw},${y} ${x},${y+hh}"/>`;else if(n.type==='io')sh=`<polygon points="${x-hw+14},${y-hh} ${x+hw},${y-hh} ${x+hw-14},${y+hh} ${x-hw},${y+hh}"/>`;
+  else sh=`<rect x="${x-hw}" y="${y-hh}" width="${n.w}" height="${n.h}" rx="${n.type==='term'?22:4}"/>`;o+=`<g class="nd ${n.type}" data-id="${n.id}">${sh}<text x="${x}" y="${y}">${esc(n.label)}</text></g>`});
+ return`<div class="mu" style="font-size:12px;margin-bottom:4px">Static structure from your code. Green = executed, yellow = current. Purple dashed = call, orange = return. Dashed outline = construct not modeled by the visualizer (real execution still runs it).</div><svg width="${mx}" height="${my}"><defs><marker id="ar" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0L8,4L0,8z" fill="#8a94a3"/></marker></defs>${o}</svg>`}
+/* ---------- rendering ---------- */
+function setTabs(el,list,cur,fn){el.innerHTML=list.map(([k,l])=>`<button class="${k===cur?'on':''}" data-k="${k}">${l}</button>`).join('');el.onclick=e=>{const k=e.target.dataset.k;if(k)fn(k)}}
+function lineHL(){const s=st.steps[st.i],h=$('hl');if(s&&s.line){h.style.display='block';h.style.top=(8+(s.line-1)*20-$('ed').scrollTop)+'px'}else h.style.display='none'}
+function gutter(){const c=$('ed').value.split('\n').length;$('gt').textContent=Array.from({length:c},(_,i)=>i+1).join('\n');$('gt').scrollTop=$('ed').scrollTop}
+const none='<span class="mu">Run the program to see actual execution data.</span>';
+function varTables(i){const S=st.steps,s=S[i];if(!s)return none;
+ const t=(f,fi,title)=>{const pv=S[i-1],pf=pv&&pv.stack[fi]&&pv.stack[fi].name===f.name?pv.stack[fi]:null;
+  return`<b>${title}</b><table><tr><th>Variable</th><th>Type</th><th>Value</th></tr>${f.vars.map(([k,y,v])=>{const o=pf&&pf.vars.find(x=>x[0]===k);return`<tr><td>${esc(k)}</td><td>${y}</td><td class="${!o||o[2]!==v?'chg':''}">${esc(v)}</td></tr>`}).join('')||'<tr><td colspan=3 class="mu">none yet</td></tr>'}</table>`};
+ const top=s.stack.length-1;return t(s.stack[0],0,'Global scope')+(top>0?'<br>'+t(s.stack[top],top,'Local scope: '+s.stack[top].name+'('+s.stack[top].args+')'):'')}
+function panel(){const S=st.steps,i=st.i,cur=S[i];let h='';
+ if(rtab==='x')h=S.length?S.slice(0,i+1).map((s,k)=>`<div class="row ${k===i?'cur':''}">#${k+1} ${s.line?'line '+s.line+': ':''}${esc(s.note)}${s.kind==='cond'&&s.cond!==undefined?` <b style="color:var(${s.cond?'--ok':'--no'})">${s.cond?'TRUE':'FALSE'}</b>`:''}</div>`).join(''):none;
+ else if(rtab==='p')h=previewHTML();else if(rtab==='v')h=varTables(i);
+ else if(rtab==='c')h=cur?'<div class="mu" style="margin-bottom:6px">Top of stack first.</div>'+[...cur.stack].reverse().map(f=>`<div class="fr"><b>${esc(f.name)}(${esc(f.args)})</b><div class="mu">locals: ${f.vars.map(v=>esc(v[0]+'='+v[2])).join(', ')||'-'}</div></div>`).join('')+'<b>Calls / returns so far</b>'+S.slice(0,i+1).filter(s=>s.kind==='call'||s.kind==='ret').map(s=>`<div class="row">${esc(s.note)}</div>`).join(''):none;
+ if(rtab!=='f'){$('rb').innerHTML=h;return}
+ if(!$('rb').querySelector('svg')&&!$('rb').querySelector('.ban'))$('rb').innerHTML=perr?`<div class="ban w">${esc(perr)}</div>`:drawChart();paint()}
+function paint(){const S=st.steps,i=st.i,vn=new Set(),ve=new Set();let prev=null;for(let k=0;k<=i&&k<S.length;k++){vn.add(S[k].id);if(prev)ve.add(prev+'>'+S[k].id);prev=S[k].id}
+ const cur=S[i],pr=S[i-1];document.querySelectorAll('#rb .nd').forEach(g=>{g.classList.toggle('vis',vn.has(g.dataset.id));g.classList.toggle('cur',!!cur&&g.dataset.id===cur.id)});
+ document.querySelectorAll('#rb .ed').forEach(e=>{const k=e.dataset.e;e.classList.toggle('vis',ve.has(k));e.classList.toggle('cur',!!pr&&k===pr.id+'>'+cur.id)});
+ const c=document.querySelector('#rb .nd.cur');if(c&&c.scrollIntoView)c.scrollIntoView({block:'nearest',inline:'nearest'})}
+function bottom(){const S=st.steps,i=st.i,cur=S[i];let h='';
+ if(btab==='i')h=((st.real&&st.real.error&&/EOFError/.test(st.real.error))?`<div class="ban w" style="margin-bottom:6px">Your program called input() but there are not enough lines here. Type the values below (one per line), then press Run.</div>`:'')+`<textarea id="in" style="height:calc(100% - 40px)" placeholder="Program input, one value per line (used by input())">${esc(st.stdin)}</textarea>`;
+ else if(btab==='o')h=((st.real&&st.real.out)?`<b>stdout</b><pre>${esc(st.real.out)}</pre>`:'')+((st.real&&st.real.fileOut)?`<b>File output (OUTPUT_PATH)</b><pre>${esc(st.real.fileOut)}</pre>`:'')||'<span class="mu">(no output yet)</span>';
+ else if(btab==='h')h=helpHTML();else if(btab==='e')h=(perr?`<pre style="color:var(--no)">Visualizer parse note (real Python decides validity): ${esc(perr)}</pre>`:'')+((st.real&&st.real.error)?`<pre style="color:var(--no)">Error: ${esc(st.real.error)}</pre>`:'')+(st.vizLimited?`<div class="ban w" style="margin:6px 0">Step-by-step visualizer stopped early (a construct isn't modeled yet); the real Python output above is unaffected.</div>`:'')+(st.err&&i===S.length-1&&!(st.real&&st.real.error)?`<div class="ban w" style="margin:6px 0">Visualizer trace note (not a real Python error): ${esc(st.err.msg)}</div>`:'')||'<span class="mu">No errors.</span>';
+ else h=S.length?S.slice(0,i+1).map((s,k)=>`<div class="row ${k===i?'cur':''}">[${k+1}] ${esc(s.note)}</div>`).join(''):'<span class="mu">Run to see execution logs.</span>';
+ $('bb').innerHTML=h;if(btab==='i')$('in').oninput=e=>st.stdin=e.target.value;if(btab==='l')$('bb').scrollTop=1e9}
+function render(){lineHL();panel();bottom();const S=st.steps;$('stat').textContent=(S.length?`step ${st.i+1}/${S.length}`:'not run')+(st.vizLimited?' · viz limited':'')+((st.real&&st.real.error)?' · Python error':'')}
+const bindRT=()=>setTabs($('rt'),RT,rtab,k=>{rtab=k;if(k==='f')$('rb').innerHTML='';bindRT();render()}),bindBT=()=>setTabs($('bt'),BT,btab,k=>{btab=k;bindBT();bottom()});
+/* ---------- real Python execution: Pyodide in a Web Worker ---------- */
+function pyWorkerMain(){
+ let py=null;
+ const SETUP=['import builtins, sys, os, linecache, traceback',
+  "os.environ['OUTPUT_PATH']='/tmp/output.txt'",
+  '__li=[0]',
+  "def __input__(prompt=''):",
+  '    if prompt: __write_out__(str(prompt))',
+  "    if __li[0] >= len(__input_lines__): raise EOFError('EOF when reading a line: the Input tab has no more lines')",
+  '    v=__input_lines__[__li[0]]',
+  '    __li[0]+=1',
+  '    return v',
+  'builtins.input=__input__',
+  'class __Out:',
+  '    def write(self,s): __write_out__(s); return len(s)',
+  '    def flush(self): pass',
+  'sys.stdout=__Out()','sys.stderr=__Out()',
+  'def __run__(src):',
+  "    linecache.cache['<main>']=(len(src),None,src.splitlines(True),'<main>')",
+  '    try:',
+  "        exec(compile(src,'<main>','exec'),{'__name__':'__main__'})",
+  '        return None',
+  '    except SystemExit:',
+  '        return None',
+  '    except BaseException:',
+  '        et,ev,tb=sys.exc_info()',
+  '        return "".join(traceback.format_exception(et,ev,tb.tb_next))'].join('\n');
+ const last=s=>String(s).trim().split('\n').pop();
+ self.onmessage=async e=>{
+  const {src,stdin}=e.data;let out='',error=null,fileOut='';
+  try{
+   if(!py){postMessage({progress:'Loading Python runtime (first run only)...'});
+    importScripts('https://cdn.jsdelivr.net/pyodide/v0.26.1/full/pyodide.js');py=await loadPyodide()}
+   py.globals.set('__input_lines__',stdin?stdin.replace(/\r/g,'').replace(/\n$/,'').split('\n'):[]);
+   py.globals.set('__write_out__',s=>{out+=s});
+   try{py.FS.mkdirTree('/tmp')}catch(_){}
+   py.runPython(SETUP);
+   const run=py.globals.get('__run__'),tried=new Set();
+   for(let a=0;a<8;a++){
+    out='';py.runPython('__li[0]=0');
+    try{py.FS.unlink('/tmp/output.txt')}catch(_){}
+    try{await py.loadPackagesFromImports(src);error=run(src)||null}
+    catch(x){error=(x&&x.message)?x.message:String(x)}
+    if(!error)break;
+    const m=error.match(/ModuleNotFoundError: No module named '([^']+)'/);
+    if(!m)break;
+    const top=m[1].split('.')[0];if(tried.has(top))break;tried.add(top);
+    postMessage({progress:'Installing "'+top+'" with micropip...'});
+    try{await py.loadPackage('micropip');py.globals.set('__pkg__',top);
+     await py.runPythonAsync('import micropip\nawait micropip.install(__pkg__)');
+    }catch(ie){error+='\n\n[sandbox] "'+top+'" could not be installed: '+last(ie&&ie.message||ie);break}
+   }
+   try{fileOut=py.FS.readFile('/tmp/output.txt',{encoding:'utf8'})}catch(_){}
+   postMessage({ok:true,out,fileOut,error});
+  }catch(e2){postMessage({ok:false,out,fileOut:'',error:'Sandbox error: '+((e2&&e2.message)||String(e2))})}
+ };
+}
+const PY_WORKER_SRC='('+pyWorkerMain.toString()+')()';
+let pyWorker=null,pyWarm=false,pyPend=null;
+function getPyWorker(){if(!pyWorker)pyWorker=new Worker(URL.createObjectURL(new Blob([PY_WORKER_SRC],{type:'text/javascript'})));return pyWorker}
+function resetPy(){if(pyWorker){try{pyWorker.terminate()}catch(_){}}pyWorker=null;pyWarm=false}
+function runPython(src,stdin){return new Promise(res=>{
+ const w=getPyWorker();let to;
+ const fin=r=>{clearTimeout(to);pyPend=null;res(r)};pyPend=fin;
+ to=setTimeout(()=>{resetPy();fin({ok:false,out:'',fileOut:'',error:'Timeout: execution exceeded the '+(pyWarm?20:120)+'s sandbox limit (worker reset)'})},pyWarm?20000:120000);
+ w.onmessage=e=>{if(e.data.progress){$('stat').textContent=e.data.progress;return}pyWarm=true;fin(e.data)};
+ w.onerror=e=>{resetPy();fin({ok:false,out:'',fileOut:'',error:'Worker error: '+e.message})};
+ w.postMessage({src,stdin})})}
+/* ---------- custom-engine step trace (Web Worker) ---------- */
+function killWorker(){if(wk){wk.terminate();wk=null}}
+function runTrace(){return new Promise(res=>{killWorker();pend=res;const w=wk=new Worker(WURL);const to=setTimeout(()=>{killWorker();res({steps:[],err:{line:0,msg:'Timeout: stopped after 8 seconds'}})},8000);
+ const fin=r=>{clearTimeout(to);killWorker();pend=null;res(r)};w.onmessage=e=>fin(e.data);w.onerror=e=>fin({steps:[],err:{line:0,msg:'Worker error: '+e.message}});w.postMessage({src:$('ed').value,stdin:st.stdin})})}
+function stopPlay(){clearInterval(st.timer);st.timer=null;$('play').textContent='Play'}
+function stopAll(){if(pyPend){const f=pyPend;resetPy();f({ok:false,out:'',fileOut:'',error:'Stopped by user'})}stopPlay();if(pend){const r=pend;pend=null;killWorker();r({steps:[],err:{line:0,msg:'Stopped by user'},stopped:1})}}
+async function runIt(auto){stopPlay();if($('lang').value!=='py')return runRemote();if(!P||$('lang').value!=='py'){btab='e';bindBT();render();return false}
+ $('run').disabled=true;$('stat').textContent='running...';
+ const[r,real]=await Promise.all([runTrace(),runPython($('ed').value,st.stdin)]);
+ $('run').disabled=false;if(r.stopped){render();return false}
+ st.steps=r.steps;st.err=r.err;st.vizLimited=!!r.vizLimited;st.real=real;st.i=-1;
+ if(real&&real.error&&/EOFError/.test(real.error))btab='i';else if(btab==='i')btab='o';
+ bindBT();
+ if(st.steps.length){if(auto)play();else go(0)}else render();return true}
+function go(i){st.i=Math.max(0,Math.min(st.steps.length-1,i));render()}
+function play(){if(!st.steps.length)return runIt(true);if(st.timer)return stopPlay();if(st.i>=st.steps.length-1)st.i=-1;$('play').textContent='Pause';
+ st.timer=setInterval(()=>{if(st.i>=st.steps.length-1){stopPlay();if(st.err){btab='e';bindBT()}render();return}go(st.i+1)},1100-$('spd').value*100)}
+async function nav(m){stopPlay();if(!st.steps.length&&!(await runIt(false)))return;const S=st.steps,d=S[st.i]?S[st.i].depth:0;let j=st.i+1;
+ if(m!=='in')while(j<S.length&&(m==='over'?S[j].depth>d:S[j].depth>=d))j++;go(Math.min(j,S.length-1))}
+/* ---------- live static analysis (debounced) ---------- */
+let deb;function analyzeLive(){stopAll();st.steps=[];st.i=-1;st.err=null;st.vizLimited=false;st.real={out:'',fileOut:'',error:null};perr=null;P=null;chart=null;$('rb').innerHTML='';
+ if($('lang').value!=='py'){$('ban').className='ban';$('ban').textContent='C and C++ run on the local backend (node server.js). HTML and CSS show a live preview. The flowchart and step trace are Python-only.';$('rb').innerHTML='<div class="ban">Flowchart and step trace are Python-only. C/C++ output and errors come from real compilation on your backend; HTML/CSS use the Preview tab.</div>';render();return}
+ $('ban').className='ban';$('ban').textContent='Flowchart/step-trace understands: assignments, print, input, if/elif/else, for/while, def/return, recursion, lists, f-strings, imports (shown, not modeled), one-line blocks. Other constructs show as a generic step; real execution still runs them. Output/Errors always reflect real Python (Pyodide in an isolated Web Worker): imports are resolved by Python itself, Pyodide packages auto-load, pure-Python PyPI packages install via micropip.';
+ try{P=EN.parse($('ed').value);chart=buildChart(P,EN.analyze(P))}catch(e){perr=e.line?`Line ${e.line}: ${e.msg}`:String(e.msg||e)}render()}
+$('ed').oninput=()=>{gutter();save();acUpdate();clearTimeout(deb);deb=setTimeout(analyzeLive,300)};$('ed').onscroll=()=>{gutter();lineHL()};
+$('ed').onkeydown=edKey;$('ed').onblur=()=>acHide();
+const load=()=>{const py=$('lang').value==='py';rtab=({html:1,css:1}[$('lang').value])?'p':(rtab==='p'?'f':rtab);bindRT();$('ed').value=py?SAMPLES[+$('sample').value]:(loadSaved()||TPL[$('lang').value]);
+ st.stdin=py?(SIN[+$('sample').value]||''):'3 4';gutter();analyzeLive()};
+$('lang').onchange=load;$('sample').onchange=()=>{$('lang').value='py';load()};$('rs').onclick=()=>{try{localStorage.removeItem('code:'+$('lang').value)}catch(e){}load()};
+$('run').onclick=()=>runIt(true);$('stop').onclick=stopAll;$('play').onclick=play;$('next').onclick=()=>nav('in');$('prev').onclick=()=>{stopPlay();go(st.i-1)};
+$('sin').onclick=()=>nav('in');$('sov').onclick=()=>nav('over');$('sou').onclick=()=>nav('out');$('rst').onclick=()=>{stopPlay();if(st.steps.length)go(0)};
+$('spd').oninput=()=>{if(st.timer){stopPlay();play()}};
+$('dl').onclick=()=>{const a=document.createElement('a'),ext={py:'py',c:'c',cpp:'cpp',html:'html',css:'css'}[$('lang').value];a.href=URL.createObjectURL(new Blob([$('ed').value],{type:'text/plain'}));a.download='program.'+ext;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)};
+$('th').onclick=()=>{const d=document.documentElement,dark=d.dataset.theme?d.dataset.theme==='dark':matchMedia('(prefers-color-scheme:dark)').matches;d.dataset.theme=dark?'light':'dark';try{localStorage.setItem('theme',d.dataset.theme)}catch(e){}};
+try{const t=localStorage.getItem('theme');if(t)document.documentElement.dataset.theme=t}catch(e){}
+/* ===== Upgrade: backend runner, autocomplete, error help, format, autosave ===== */
+const BACKEND='http://127.0.0.1:8787/run',NAMES={py:'Python',c:'C',cpp:'C++',html:'HTML',css:'CSS'};
+const TPL={
+c:`#include <stdio.h>\n\nint main(void) {\n    int a, b;\n    scanf("%d %d", &a, &b);\n    printf("Sum = %d\\n", a + b);\n    return 0;\n}`,
+cpp:`#include <iostream>\n#include <vector>\nusing namespace std;\n\nint main() {\n    int a, b;\n    cin >> a >> b;\n    vector<int> v = {a, b};\n    cout << "Sum = " << v[0] + v[1] << endl;\n    return 0;\n}`,
+html:`<!DOCTYPE html>\n<html>\n<head>\n<style>\n  body { font-family: sans-serif; text-align: center; }\n  h1 { color: #2f6fed; }\n</style>\n</head>\n<body>\n  <h1>Hello, world!</h1>\n  <p>Edit me and watch the Preview tab.</p>\n</body>\n</html>`,
+css:`h1 {\n  color: tomato;\n  text-align: center;\n}\n.box {\n  background: #eef2fb;\n  padding: 16px;\n  border-radius: 8px;\n}\nbutton {\n  padding: 8px 16px;\n}`};
+const save=()=>{try{localStorage.setItem('code:'+$('lang').value,$('ed').value)}catch(e){}};
+const loadSaved=()=>{try{return localStorage.getItem('code:'+$('lang').value)}catch(e){return null}};
+const attr=s=>s.replace(/&/g,'&amp;').replace(/"/g,'&quot;');
+const DEMO='<h1>Heading</h1><p class="box">A paragraph inside a .box element.</p><button>Button</button><ul><li>One</li><li>Two</li></ul>';
+function previewHTML(){const l=$('lang').value,c=$('ed').value;if(l!=='html'&&l!=='css')return'<span class="mu">Preview is for HTML and CSS. Choose one of them in the language list.</span>';
+ const doc='<meta http-equiv="Content-Security-Policy" content="default-src \'none\'; style-src \'unsafe-inline\'; img-src data:">'+(l==='html'?c:'<!DOCTYPE html><html><body>'+DEMO+'<style>'+c+'</style></body></html>');
+ return '<div class="mu" style="font-size:12px;margin-bottom:4px">'+(l==='css'?'Your CSS is applied to a fixed demo page. ':'')+'Live preview in a sandbox: scripts and network are disabled. The browser does not report HTML mistakes; it just renders what it can.</div><iframe sandbox title="preview" style="width:100%;height:calc(100% - 28px);min-height:260px;border:1px solid var(--bd);background:#fff" srcdoc="'+attr(doc)+'"></iframe>'}
+async function runRemote(){const lang=$('lang').value;if(lang==='html'||lang==='css'){rtab='p';bindRT();st.steps=[];st.i=-1;st.real={out:'',fileOut:'',error:null};render();return false}$('run').disabled=true;$('stat').textContent='running on backend...';
+ try{const r=await(await fetch(BACKEND,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({lang,code:$('ed').value,stdin:st.stdin})})).json();
+  const bad=r.error||r.ok===false;st.real={out:r.stdout||'',fileOut:'',error:bad?(r.error||(r.stage==='compile'?'Compile error:\n':'')+(r.stderr||'Program exited with code '+r.code)):null};
+  if(!bad&&r.warnings)st.real.out+='\n[compiler warnings]\n'+r.warnings;btab=bad?'h':'o'}
+ catch(e){st.real={out:'',fileOut:'',error:'Backend not reachable at '+BACKEND+'. Start it with: node server.js (see README).'};btab='e'}
+ st.steps=[];st.i=-1;$('run').disabled=false;bindBT();render();return false}
+/* ---- autocomplete: keywords, snippets, builtins and identifiers in your file (not a full language server) ---- */
+const WD=s=>s.split(' '),CK='auto break case char const continue default do double else enum extern float for goto if inline int int32_t long register return short signed sizeof static struct switch typedef union unsigned void volatile while';
+const DEF={
+py:{k:WD('False None True and as assert break class continue def del elif else except finally for from global if import in is lambda not or pass raise return try while with yield'),f:WD('print input int isinstance len range str float list dict set tuple open sum max min abs sorted enumerate round map zip'),s:[['def','def §():\n    pass'],['for loop','for i in range(§):\n    pass'],['if __name__','if __name__ == "__main__":\n    §']]},
+c:{k:WD(CK),f:WD('printf scanf puts malloc free strlen strcpy strcmp sqrt pow getchar'),s:[['int main()','int main(void) {\n    §\n    return 0;\n}'],['#include <stdio.h>'],['#include <stdlib.h>'],['#include <string.h>'],['#include <math.h>'],['for loop','for (int i = 0; i < §; i++) {\n    \n}']]},
+cpp:{k:WD(CK+' class public private protected template typename namespace using new delete bool true false nullptr cout cin endl string vector'),f:WD('printf scanf sqrt pow sort swap'),s:[['int main()','int main() {\n    §\n    return 0;\n}'],['#include <iostream>'],['#include <vector>'],['#include <string>'],['#include <algorithm>'],['using namespace std;'],['cout <<','cout << § << endl;'],['for loop','for (int i = 0; i < §; i++) {\n    \n}']]},
+html:{k:WD('html head body div span p a img ul ol li table tr td th form input button label h1 h2 h3 h4 style title meta link class id href src'),f:[],s:[['<!DOCTYPE html>','<!DOCTYPE html>\n<html>\n<head>\n<title>§</title>\n</head>\n<body>\n\n</body>\n</html>'],['<div>','<div>§</div>'],['<p>','<p>§</p>'],['<h1>','<h1>§</h1>'],['<ul>','<ul>\n  <li>§</li>\n</ul>'],['<button>','<button>§</button>'],['<a href>','<a href="§"></a>'],['<img src>','<img src="§" alt="">']]},
+css:{k:WD('color background background-color border border-radius margin padding display flex grid font-size font-family font-weight text-align width height max-width position top left right bottom justify-content align-items gap opacity box-shadow cursor overflow'),f:[],s:[['rule','§ {\n  \n}'],['@media','@media (max-width: 600px) {\n  §\n}']]}};
+let ac={on:0,items:[],sel:0,s:0,e:0},acSkip=0;
+const acHide=()=>{ac.on=0;$('ac').style.display='none'};
+function acDraw(){$('ac').innerHTML=ac.items.map((x,i)=>`<div class="${i===ac.sel?'on':''}" data-i="${i}" role="option"><b>${esc(x[0])}</b><span>${x[2]}</span></div>`).join('')}
+function acUpdate(force){if(acSkip){acSkip=0;return acHide()}const ed=$('ed'),p=ed.selectionStart;if(ed.selectionEnd!==p)return acHide();
+ const t=ed.value.slice(0,p),m=(/^(html|css)$/.test($('lang').value)?/[<\w-]*$/:/[#\w.]*$/).exec(t)[0];if(!m&&!force)return acHide();
+ const D=DEF[$('lang').value]||DEF.py,q=m.toLowerCase(),seen=new Set(),all=[],add=(l,i,k)=>{if(!seen.has(l)){seen.add(l);all.push([l,i,k])}};
+ D.s.forEach(([l,i])=>add(l,i||l,'snippet'));D.k.forEach(w=>add(w,w,'keyword'));D.f.forEach(w=>add(w,w+'(§)','function'));
+ (ed.value.match(/[A-Za-z_]\w{2,}/g)||[]).forEach(w=>{if(w!==m)add(w,w,'in file')});
+ const ord={keyword:0,function:1,snippet:2,'in file':3};
+ ac.items=all.filter(x=>x[0].toLowerCase().startsWith(q)).sort((a,b)=>ord[a[2]]-ord[b[2]]||a[0].length-b[0].length).slice(0,8);
+ if(!ac.items.length)return acHide();ac.on=1;ac.sel=0;ac.s=p-m.length;ac.e=p;acDraw();
+ const ls=t.split('\n'),row=ls.length-1,col=ls[row].length,box=$('ac').style;box.display='block';
+ box.left=Math.max(40,Math.min(45+col*7.8-ed.scrollLeft,$('edw').clientWidth-200))+'px';box.top=(8+(row+1)*20-ed.scrollTop)+'px'}
+function acAccept(i){const ed=$('ed'),ins=ac.items[i][1],pos=ins.indexOf('§');ed.focus();ed.setSelectionRange(ac.s,ac.e);acSkip=1;
+ document.execCommand('insertText',false,ins.replace('§',''));acSkip=0;if(pos>=0)ed.setSelectionRange(ac.s+pos,ac.s+pos);acHide()}
+$('ac').onmousedown=e=>{e.preventDefault();const d=e.target.closest('[data-i]');if(d)acAccept(+d.dataset.i)};
+function edKey(e){const ed=$('ed'),k=e.key;
+ if(ac.on){if(k==='ArrowDown'||k==='ArrowUp'){e.preventDefault();ac.sel=(ac.sel+(k==='ArrowDown'?1:ac.items.length-1))%ac.items.length;acDraw();return}
+  if(k==='Enter'||k==='Tab'){e.preventDefault();acAccept(ac.sel);return}if(k==='Escape'){e.preventDefault();acHide();return}}
+ if(k===' '&&e.ctrlKey){e.preventDefault();acUpdate(1);return}
+ const p=ed.selectionStart,q=ed.selectionEnd,v=ed.value,ins=t=>document.execCommand('insertText',false,t);
+ if(k==='Tab'){e.preventDefault();ins('    ');return}
+ if(e.ctrlKey||e.metaKey||e.altKey)return;
+ if(k==='Enter'){e.preventDefault();const ln=v.slice(v.lastIndexOf('\n',p-1)+1,p),ind=ln.match(/^ */)[0],tr=ln.trimEnd(),py=$('lang').value==='py',open=py?tr.endsWith(':'):/[{(\[]$/.test(tr);
+  if(!py&&tr.endsWith('{')&&v[p]==='}'){ins('\n'+ind+'    \n'+ind);ed.setSelectionRange(p+ind.length+5,p+ind.length+5);return}ins('\n'+ind+(open?'    ':''));return}
+ const pr={'(':')','[':']','{':'}','"':'"',"'":"'"};
+ if(p===q&&')]}"\''.includes(k)&&v[p]===k){e.preventDefault();ed.setSelectionRange(p+1,p+1);return}
+ if(p===q&&pr[k]){if((k==='"'||k==="'")&&/\w/.test(v[p-1]||''))return;e.preventDefault();ins(k+pr[k]);ed.setSelectionRange(p+1,p+1)}}
+$('fmt').onclick=()=>{const ed=$('ed');let o;
+ if(/^(py|html)$/.test($('lang').value))o=ed.value.replace(/\t/g,'    ').split('\n').map(s=>s.trimEnd()).join('\n').replace(/\n*$/,'\n');
+ else{let d=0;const strip=s=>s.replace(/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|\/\/.*$/g,'');
+  o=ed.value.split('\n').map(s=>{const t=s.trim();if(!t)return'';if(t[0]==='#')return t;const c=strip(t),op=(c.match(/[{(\[]/g)||[]).length,cl=(c.match(/[})\]]/g)||[]).length,ind=Math.max(0,d-(/^[})\]]/.test(c)?1:0));d=Math.max(0,d+op-cl);return'    '.repeat(ind)+t}).join('\n')}
+ if(o!==ed.value){ed.focus();ed.select();document.execCommand('insertText',false,o)}};
+/* ---- error assistant: rule-based explanations; fixes are previewed and only applied on click ---- */
+let FX=[];const hdr={printf:'stdio.h',scanf:'stdio.h',puts:'stdio.h',malloc:'stdlib.h',free:'stdlib.h',atoi:'stdlib.h',strlen:'string.h',strcpy:'string.h',strcmp:'string.h',sqrt:'math.h',pow:'math.h'};
+const addInc=(c,h)=>c.includes(h)?null:h+'\n'+c;
+const endWith=(c,i,ch)=>{const a=c.split('\n');if(i<0||i>=a.length||a[i].trimEnd().endsWith(ch))return null;a[i]=a[i].trimEnd()+ch;return a.join('\n')};
+const RULES=[
+[/expected ';'|';' expected/i,'Missing semicolon','A statement ended without a semicolon (;). The compiler reports the problem where it noticed it, which is often the line after the real mistake.','Semicolons mark the end of a statement in C, C++, Java and JavaScript.',(c,L,e)=>{const a=c.split('\n');let j=L-1;if(/before/.test(e)){j=L-2;while(j>0&&!a[j].trim())j--}return endWith(c,j,';')}],
+[/implicit declaration of function .(\w+)/,'Missing #include','You used a function the compiler has not been told about. C needs a header file that declares it.','Headers such as stdio.h declare standard functions like printf and scanf.',(c,L,e)=>{const h=hdr[/function .(\w+)/.exec(e)[1]];return h?addInc(c,'#include <'+h+'>'):null}],
+[/'?(cout|cin|endl|vector|string)'? (was )?not declared|does not name a type|has not been declared/,'Missing include or std::','C++ standard names live in the std namespace and need their header. Add the include and either write std::cout or add using namespace std;','Beginners usually add using namespace std; after the #include lines.',(c)=>{if(/using namespace std/.test(c))return null;const a=c.split('\n');let j=-1;a.forEach((s,i)=>{if(/^#include/.test(s))j=i});a.splice(j+1,0,'using namespace std;');return a.join('\n')}],
+[/undeclared|NameError|cannot find symbol|not defined/,'Unknown name','You used a variable or function name that has not been created yet, or it is misspelled.','Names must be defined before use, and spelling and capital letters must match exactly.',null],
+[/expected ':'|SyntaxError: expected ':'/,'Missing colon','if, for, while, def and class lines must end with a colon (:).','The colon tells Python that an indented block follows.',(c,L)=>endWith(c,L-1,':')],
+[/IndentationError/,'Indentation problem','Python uses indentation to group code. A line is indented too much, too little, or a block is empty.','Use 4 spaces for each level and do not mix tabs and spaces. Use the Format button to tidy.',null],
+[/ZeroDivisionError|division by zero/,'Division by zero','The program divided a number by 0, which is undefined.','Check the divisor with an if before dividing.',null],
+[/IndexError|out of range|ArrayIndexOutOfBounds/,'Index out of range','You asked for a list or array position that does not exist. Positions start at 0 and end at length minus 1.','A list of 3 items has positions 0, 1 and 2.',null],
+[/ValueError|InputMismatch|NumberFormat/,'Wrong kind of value','A value could not be converted, for example text like "abc" turned into a number.','Check what is typed in the Input tab matches what the program reads.',null],
+[/TypeError/,'Mixing incompatible types','An operation was used on values of types that cannot work together, such as adding text and a number.','Convert first, for example str(5) or int("5").',null],
+[/EOFError|EOF when reading|NoSuchElement/,'Not enough input','The program asked for input but the Input tab has fewer lines than it needs.','Type each value on its own line (or separated as your program expects) in the Input tab, then Run again.',null],
+[/class (\w+) is public, should be declared/,'Java class name','A public Java class must be named Main in this runner because the file is Main.java.','Rename the public class to Main.',(c)=>c.replace(/public class \w+/,'public class Main')],
+[/Timeout/,'Program ran too long','The program did not finish in time, which usually means an infinite loop.','Check that the loop variable changes so the condition eventually becomes false.',null],
+[/Backend not reachable/,'Backend not running','C, C++, Java and JavaScript run on a small local server that is not responding.','Open a terminal in the project folder and run: node server.js',null]];
+function helpHTML(){const e=(st.real&&st.real.error)||'';if(!e)return'<span class="mu">No error to explain. After a failed run, an explanation appears here.</span>';
+ const lang=$('lang').value,code=$('ed').value,re=/(?:main\.\w+|Main\.java|<main>"?)[:,]\s*(?:line\s*)?(\d+)(?::(\d+))?/g;let L=0,C=0,x;while(x=re.exec(e)){L=+x[1];C=+(x[2]||0)}
+ const r=RULES.find(r=>r[0].test(e));FX=[];
+ let h=`<b>Language:</b> ${NAMES[lang]}${L?` &nbsp; <b>Location:</b> line ${L}${C?', column '+C:''}`:''}<pre style="color:var(--no);margin:6px 0">${esc(e.slice(0,1500))}</pre>`;
+ if(!r)return h+'<div>No plain-English explanation exists for this message yet. The first error line above usually names the problem and its line.</div>';
+ h+=`<div><b>${r[1]}</b></div><div>${r[2]}</div>`;
+ const nc=r[4]?r[4](code,L,e):null;
+ if(nc&&nc!==code){FX.push(nc);const o=code.split('\n'),n=nc.split('\n');let i=0;while(i<o.length&&o[i]===n[i])i++;
+  h+=`<div class="fr"><b>Suggested change (not applied yet)</b><pre>${n.length>o.length?'+ '+esc(n[i]):'- '+esc(o[i]||'')+'\n+ '+esc(n[i]||'')}</pre><button class="p" data-fx="0">Apply fix</button> <span class="mu">Ctrl+Z undoes it.</span></div>`}
+ return h+`<details><summary>Learn more</summary><div>${r[3]}</div></details>`}
+$('bb').addEventListener('click',e=>{const k=e.target.dataset&&e.target.dataset.fx;if(k!==undefined&&FX[+k]){const ed=$('ed');ed.focus();ed.select();document.execCommand('insertText',false,FX[+k])}});
+
+bindRT();bindBT();load();
+</script></body></html>
